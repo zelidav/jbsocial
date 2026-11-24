@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>JB Clip Review</title>
+<style>
+:root{--blue:#2A3B8E;--yellow:#FFF100;--red:#DA2342;--ink:#0A0A0A;--paper:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--blue);color:#fff;font:16px/1.4 Montserrat,"Segoe UI",system-ui,sans-serif}
+h1,h2,.pill,button{font-family:"Nexa Heavy","Arial Black",Impact,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.02em}
+header{background:var(--yellow);color:var(--blue);padding:18px 16px;border-bottom:6px solid var(--red)}
+header h1{margin:0;font-size:clamp(24px,6vw,40px)}
+header p{margin:4px 0 0;font-weight:700;color:var(--ink)}
+main{max-width:1100px;margin:0 auto;padding:16px}
+#gate{max-width:420px;margin:12vh auto;padding:24px;background:var(--paper);color:var(--ink);border:6px solid var(--yellow);border-radius:14px}
+#gate h2{margin:0 0 12px;color:var(--blue)}
+input,textarea,select{width:100%;padding:12px;border:3px solid var(--ink);border-radius:8px;font:inherit;color:var(--ink);background:#fff}
+button{background:var(--red);color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}
+button:disabled{opacity:.5;cursor:wait}
+button.alt{background:var(--yellow);color:var(--blue)}
+#err{color:var(--red);font-weight:700;min-height:1.4em;margin-top:8px}
+#grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--paper);color:var(--ink);border-radius:14px;overflow:hidden;border:6px solid var(--yellow)}
+.card video{display:block;width:100%;aspect-ratio:9/16;background:#000;max-height:70vh;object-fit:contain}
+.body{padding:14px}
+.pill{display:inline-block;background:var(--red);color:#fff;border-radius:99px;padding:2px 10px;font-size:12px;margin-right:6px}
+.card h2{margin:8px 0 4px;font-size:18px;color:var(--blue)}
+.card p{margin:0 0 10px}
+fieldset{border:0;padding:0;margin:8px 0}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.opts label{border:3px solid var(--blue);border-radius:8px;padding:8px;font-weight:700;cursor:pointer;text-align:center;font-size:14px}
+.opts input{display:none}
+.opts input:checked+span{background:var(--blue);color:#fff;display:block;margin:-8px;padding:8px;border-radius:5px}
+.status{margin-top:8px;font-weight:700}
+.ok{color:#0a7a2f}.bad{color:var(--red)}
+small{color:#555}
+.hint{background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;margin:0 0 16px}
+</style>
+</head>
+<body>
+<header><h1>JB Clip Review</h1><p>How To Make A Bong: high-energy cut. Watch, then tell us what to change.</p></header>
+
+<form id="gate" autocomplete="off">
+  <h2>Team passphrase</h2>
+  <input id="pw" type="password" placeholder="Passphrase" autofocus>
+  <p style="margin:12px 0 0"><button id="go" type="submit">Open</button></p>
+  <div id="err" role="alert"></div>
+</form>
+
+<main id="app" hidden>
+  <p class="hint"><b>How feedback is handled:</b> small fixes (captions, trims, wording) are actioned without waiting. Big changes (re-cut, kill a clip, new direction) wait for David's approval first.</p>
+  <div id="grid"></div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+let KEY,META,BASE=location.pathname.replace(/[^/]*$/,'');
+
+async function getJSON(f){const r=await fetch(BASE+f);if(!r.ok)throw new Error(f+' '+r.status);return r.json()}
+async function getBytes(f){const r=await fetch(BASE+f);if(!r.ok)throw new Error(f+' '+r.status);return new Uint8Array(await r.arrayBuffer())}
+async function dec(buf){const iv=buf.slice(0,12),ct=buf.slice(12);return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},KEY,ct))}
+
+$('#gate').addEventListener('submit',async e=>{
+  e.preventDefault();$('#err').textContent='';$('#go').disabled=true;
+  try{
+    const h=await getJSON('header.json');
+    const base=await crypto.subtle.importKey('raw',new TextEncoder().encode($('#pw').value),'PBKDF2',false,['deriveKey']);
+    KEY=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(h.salt),iterations:h.iter,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+    META=JSON.parse(new TextDecoder().decode(await dec(await getBytes('meta.enc'))));
+  }catch(x){$('#err').textContent=(x.message||'').includes('decrypt')||x.name==='OperationError'?'Wrong passphrase.':'Could not open: '+x.message;$('#go').disabled=false;return}
+  $('#gate').hidden=true;$('#app').hidden=false;render();
+});
+
+function render(){
+  const g=$('#grid');
+  META.clips.forEach(c=>{
+    const d=document.createElement('div');d.className='card';
+    d.innerHTML=`<video controls playsinline preload="none"></video>
+    <div class="body"><span class="pill">#${c.rank}</span><span class="pill">score ${c.score}</span><span class="pill">${c.len}s</span>
+    <h2></h2><p></p>
+    <form>
+      <fieldset class="opts">
+        <label><input type="radio" name="v" value="ship" required><span>Ship it</span></label>
+        <label><input type="radio" name="v" value="small"><span>Small fix</span></label>
+        <label><input type="radio" name="v" value="major"><span>Big change</span></label>
+        <label><input type="radio" name="v" value="kill"><span>Kill it</span></label>
+      </fieldset>
+      <textarea name="t" rows="3" placeholder="What should change? (timestamps help: 0:12 caption too small)"></textarea>
+      <input name="n" placeholder="Your name" required style="margin-top:8px">
+      <p style="margin:10px 0 0"><button type="submit">Send feedback</button></p>
+      <div class="status" role="status"></div>
+    </form></div>`;
+    d.querySelector('h2').textContent=c.title;d.querySelector('p').textContent=c.note;
+    const v=d.querySelector('video');let loaded=false;
+    // poster + video decrypt on demand so the page stays light
+    getBytes(c.id+'.jpg.enc').then(dec).then(x=>{v.poster=URL.createObjectURL(new Blob([x],{type:'image/jpeg'}))}).catch(()=>{});
+    v.addEventListener('play',async()=>{if(loaded)return;loaded=true;v.pause();
+      try{const x=await dec(await getBytes(c.id+'.mp4.enc'));v.src=URL.createObjectURL(new Blob([x],{type:'video/mp4'}));v.play()}
+      catch(e){loaded=false;d.querySelector('.status').textContent='Video failed to load: '+e.message;d.querySelector('.status').className='status bad'}});
+    d.querySelector('form').addEventListener('submit',e=>send(e,c));
+    g.appendChild(d);
+  });
+}
+
+async function send(e,c){
+  e.preventDefault();const f=e.target,st=f.querySelector('.status'),btn=f.querySelector('button');
+  const p={token:META.feedbackToken,project:META.project,clip:c.id,rank:c.rank,title:c.title,
+    verdict:f.v.value,text:f.t.value.trim(),name:f.n.value.trim(),ts:new Date().toISOString()};
+  if(!META.feedbackUrl){st.className='status bad';st.innerHTML='Feedback is not connected yet, so this was NOT saved. Copy it and send it to David:<br><small></small>';
+    st.querySelector('small').textContent=JSON.stringify(p);return}
+  btn.disabled=true;st.className='status';st.textContent='Sending…';
+  try{
+    const r=await fetch(META.feedbackUrl,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(p)});
+    const j=await r.json();if(!j.ok)throw new Error(j.error||'rejected');
+    st.className='status ok';st.textContent=j.triage==='approval'?'Saved. This is a big change, so it waits for David\'s approval.':'Saved. Small fix, it will be actioned.';
+    f.reset();
+  }catch(x){st.className='status bad';st.textContent='NOT saved: '+x.message+'. Try again, or tell David.'}
+  btn.disabled=false;
+}
+</script>
+</body>
+</html>
