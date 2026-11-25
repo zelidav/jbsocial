@@ -222,7 +222,7 @@ footer { max-width: 1232px; margin: 0 auto; padding: 0 24px 48px; color: var(--m
   var num = function (s) { var m = String(s).replace(/,/g, '').match(/^[+-]?\d+(\.\d+)?/); return m ? Number(m[0]) : null; };
 
   // ---------- pieces ----------
-  var TABS = [['desk', 'Desk'], ['week', 'This week'], ['clips', 'Clips'], ['numbers', 'Numbers'], ['scout', 'Scout'], ['log', 'Run log'], ['reports', 'All reports']];
+  var TABS = [['desk', 'Desk'], ['week', 'This week'], ['clips', 'Clips'], ['numbers', 'Numbers'], ['events', 'Events'], ['scout', 'Scout'], ['log', 'Run log'], ['reports', 'All reports']];
   var AGENT_NAME = { analyst: 'Analyst', scout: 'Scout', brief: 'Strategist', clips: 'Clip Factory', queue: 'Clip queue', runlog: 'Run log', other: 'Other' };
 
   function currentBrief() {
@@ -372,6 +372,8 @@ footer { max-width: 1232px; margin: 0 auto; padding: 0 24px 48px; color: var(--m
     }).join('') + '</tbody></table></div>';
   };
 
+  V.events = function () { return reportView('other', 'Events', 'Event plans: dates, posts, who does what.'); };
+
   V.reports = function () {
     var file = location.hash.split('/')[1];
     if (file) {
@@ -402,7 +404,7 @@ footer { max-width: 1232px; margin: 0 auto; padding: 0 24px 48px; color: var(--m
   window.addEventListener('hashchange', function () { if (site) render(); });
   document.addEventListener('change', function (ev) {
     var n = ev.target.getAttribute && ev.target.getAttribute('data-nav');
-    if (n) location.hash = ({ analyst: 'numbers', scout: 'scout' }[n]) + '/' + ev.target.value;
+    if (n) location.hash = ({ analyst: 'numbers', scout: 'scout', other: 'events' }[n]) + '/' + ev.target.value;
   });
   document.addEventListener('click', function (ev) {
     var b = ev.target.closest && ev.target.closest('[data-copy]');
