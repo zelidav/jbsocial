@@ -1,0 +1,31 @@
+name: Desk stale check
+on:
+  schedule:
+    - cron: '30 13 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Open, update or close the stale issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(git log -1 --format=%ct -- data/site.enc)
+          now=$(date +%s)
+          age_h=$(( (now - last) / 3600 ))
+          title="Desk data is stale"
+          num=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ "$age_h" -ge 48 ]; then
+            body="data/site.enc was last updated $age_h hours ago ($(date -u -d @$last +%Y-%m-%dT%H:%MZ)). The daily publish has not pushed. Checked $(date -u +%Y-%m-%dT%H:%MZ)."
+            if [ -n "$num" ]; then gh issue comment "$num" --body "$body"; else gh issue create --title "$title" --body "$body"; fi
+          else
+            if [ -n "$num" ]; then gh issue close "$num" --comment "Fresh again: last update $age_h hours ago."; fi
+            echo "fresh ($age_h h)"
+          fi
